@@ -1,0 +1,185 @@
+---
+title: "Power Analysis"
+author: "Abigail, Jana, Killian, Luan"
+date: "06/16/2026"
+output:
+  pdf_document:
+    number_sections: true
+---
+
+```{r setup, echo=TRUE, message=FALSE, warning=FALSE}
+library(data.table)
+
+knitr::opts_chunk$set(dpi = 300)
+
+set.seed(1234)
+```
+
+An experiment's power is the probability that it rejects the null hypothesis of no-effect. We conduct a preliminary power analysis through simulation under three different scenarios to help us understand how many data points (individuals/units) we will have to collect for our experiment.
+
+Our experiment is a between-subjects randomized controlled trial testing whether a neutral pop-up message delivered at the 30-minute mark of a ChatGPT session increases the rate at which users initiate new chat sessions. The control group receives no pop-up. We deliberately chose neutral framing ("Please restart a new chat session"), rather than a safety-warning framing, so that any behavior change can be attributed to the salience of the reminder itself rather than to persuasion or newly acquired beliefs about AI safety degradation. The primary outcome is new chat session creation rate; the secondary outcome is total session duration. Participants are tech-engaged volunteers willing to install a browser extension and participate in a two-week study.
+
+# Our Assumptions
+
+Because we are conducting a power analysis *before* we have conducted our experiment, large parts of what we need to know we have not observed. We assume a treatment effect (ATE) of 0.2 additional new chat sessions per 30-minute interval, based on prior nudge research suggesting low-friction, non-informational reminders produce small but meaningful behavior changes (Mertens et al., 2022; Hu et al., 2025), and our own qualitative judgment that a neutral pop-up would occasionally prompt a restart that otherwise would not have occurred.
+
+1.  **The distribution of outcomes in the control group** is assumed to be approximately Normal with mean 0 and standard deviation varying by scenario (0.5, 1.0, or 2.0). The mean of 0 is a qualitative assumption: absent a prompt, we assume the default behavior is to continue in the same window rather than initiate a new chat session. Most users have no salient reason to restart mid-conversation, and the 30-minute threshold is well above typical casual session lengths, meaning the treatment primarily affects heavy users engaged in longer sessions — consistent with assumption 3 below. We vary the standard deviation across scenarios to capture the range from a homogeneous user base (low variance) to a highly heterogeneous mix of heavy and casual users (high variance). We note that our recruitment pool may already have above-average awareness of AI safety concerns, which could inflate the baseline restart rate beyond 0 and make participants more responsive to the nudge than a general population sample. Both effects would cause our power analysis to underestimate true power for this specific sample, while limiting generalizability.
+
+2.  **The treatment effect** is a constant additive shift of 0.2 additional new sessions per 30-minute interval. This reflects a small but plausible response to a neutral, low-friction reminder consistent with the corrected effect sizes reported in Mertens et al. (2022). We note that our Week 1 baseline survey data — collected before treatment is administered — will provide an empirical variance estimate that can be used to update these assumptions prior to final analysis. A more recent second-order meta-analysis (Hu et al., 2025) covering ~30 million participants finds a similarly small aggregate effect that drops to near zero after publication bias correction, reinforcing our conservative ATE assumption.
+
+3.  **The treatment effect does not affect all units the same.** We expect heavy users — those already motivated by and integrating LLMs into their daily workflows — to show the largest increase in new chat session creation, because the pop-up is most likely to be acted on by users who are actively engaged mid-session. Moderate and light users may respond less, and we expect them to show a larger decrease in total session duration rather than an increase in restarts. For this power analysis, we model the effect as a constant additive shift (equal SD in treatment and control) as a simplifying assumption; the high-spread scenario ($\sigma = 2.0$) partially captures the heterogeneity arising from this mix of user types.
+
+# Conducting the T-Test
+
+We are interested in assessing whether the mean of the treatment group is different from the mean of the control group. We simulate one experiment with 150 participants (75 per condition), and draw outcomes from our assumed distributions, to run a single t-test to show what one instance of our experiment would look like.
+
+```{r t-test-single-draw}
+d <- data.table()
+
+d[ , condition := rep(c('control', 'treatment'), each = 75)]
+d[condition == 'control', Y := rnorm(.N, mean = 0, sd = 0.5)]
+d[condition == 'treatment', Y := rnorm(.N, mean = 0.2, sd = 0.5)]
+
+d[ , t.test(Y ~ condition)]
+```
+
+To compute an Average Treatment Effect, we find the difference in means between our single sample of control and treatment effects.
+
+```{r ate}
+ate <- d[ , .(group_mean = mean(Y)), keyby = .(condition)][ , diff(group_mean)]
+ate
+```
+
+# Generalize to build a function
+
+We encode our experimental assumptions as function defaults, so our analysis is fully reproducible and transparent.
+
+**Control mean (**$\mu_\text{control} = 0$). This is a qualitative assumption: absent a prompt, we assume users default to continuing in the same window rather than starting a new chat. The 30-minute threshold is well above typical casual session lengths, so spontaneous mid-session restarts are rare by design.
+
+**Treatment mean (**$\mu_\text{treat} = 0.2$). We assume an ATE of 0.2 additional new sessions per 30-minute interval, based on prior nudge research suggesting low-friction, non-informational reminders produce small but meaningful behavior changes (Mertens et al., 2022; Hu et al., 2025), and our qualitative judgment that a neutral pop-up would occasionally prompt a restart that otherwise would not have occurred.
+
+**Standard deviation (**$\sigma = 1$). The function defaults to our medium-spread scenario, which we consider the most realistic central estimate. The power sweep below varies this across $\sigma \in \{0.5, 1.0, 2.0\}$ to bracket the plausible range.
+
+**Sample size (**$n = 75$ per condition, 150 total). Although our recruitment pool is large, realistic attrition across each step — post visibility, voluntary sign-up, informed consent, browser extension installation, and sustained compliance over two weeks — makes roughly 150 participants a conservative but achievable target. We therefore set the default at 75 per condition.
+
+**Simulation loops (**$\text{power\_loops} = 500$). Each loop generates one simulated dataset and tests it, producing one p-value. More loops reduce Monte Carlo noise in the power *estimate* but do not change the underlying power of the experiment. 500 loops balances precision with computation time.
+
+```{r power-function}
+power_test_t <- function(
+  mean_control         = 0,
+  mean_treat           = 0.2,
+  sd_control           = 1,
+  sd_treat             = 1,
+  number_per_condition = 75,
+  power_loops          = 500) {
+
+  p_values <- numeric(power_loops)
+
+  for(power_loop in 1:power_loops) {
+    p_values[power_loop] <- t.test(
+      x = rnorm(number_per_condition, mean = mean_control, sd = sd_control),
+      y = rnorm(number_per_condition, mean = mean_treat,   sd = sd_treat)
+    )$p.value
+  }
+
+  return(list(
+    'p_values' = p_values,
+    'power'    = mean(p_values < 0.05)
+  ))
+}
+```
+
+```{r check-power}
+power_test_t()$power
+```
+
+# Power Analysis: Three Scenarios
+
+We vary the standard deviation (equal for control and treatment) to represent three plausible worlds:
+
+-   **Low standard deviation** ($\sigma = 0.5$): Users are homogeneous — most behave similarly.
+-   **Medium standard deviation** ($\sigma = 1.0$): Moderate heterogeneity; our best central estimate.
+-   **High standard deviation** ($\sigma = 2.0$): Highly mixed user base of heavy and casual users.
+
+In all scenarios, $\mu_\text{control} = 0$ and ATE $= 0.2$.
+
+```{r three-scenarios}
+samples_per_condition <- seq(25, 750, by = 25)
+
+scenarios <- list(
+  low    = list(sd = 0.5, label = "Low spread (sd = 0.5)",    col = "#2166ac"),
+  medium = list(sd = 1.0, label = "Medium spread (sd = 1.0)", col = "#33a02c"),
+  high   = list(sd = 2.0, label = "High spread (sd = 2.0)",   col = "#ff7f00")
+)
+
+results <- lapply(scenarios, function(s) {
+  sapply(samples_per_condition, function(n) {
+    power_test_t(
+      mean_control         = 0,
+      mean_treat           = 0.2,
+      sd_control           = s$sd,
+      sd_treat             = s$sd,
+      number_per_condition = n,
+      power_loops          = 500
+    )$power
+  })
+})
+```
+
+```{r power-plot, fig.width=7, fig.height=5}
+total_n <- samples_per_condition * 2
+
+plot(
+  x    = total_n,
+  y    = results$low,
+  type = 'l', lwd = 2,
+  col  = scenarios$low$col,
+  ylim = c(0, 1),
+  xlab = "Total Sample Size (N)",
+  ylab = "Estimated Power",
+  main = "Power Analysis: New Chat Session Nudge Experiment"
+)
+lines(x = total_n, y = results$medium, lwd = 2, col = scenarios$medium$col)
+lines(x = total_n, y = results$high,   lwd = 2, col = scenarios$high$col)
+
+abline(h = 0.80, lty = 2, col = "gray40")
+text(x = 400, y = 0.83, labels = "80% power",
+     adj = 1, col = "gray40", cex = 0.85)
+
+abline(v = 150, lty = 3, col = "black", lwd = 1.5)
+text(x = 155, y = 0.95, labels = "N = 150",
+     adj = 0, cex = 0.75)
+
+legend(
+  "bottomright",
+  legend = sapply(scenarios, `[[`, "label"),
+  col    = sapply(scenarios, `[[`, "col"),
+  lwd    = 2,
+  bty    = "n",
+  cex    = 0.85
+)
+```
+
+# Reasoning about Power
+
+## Interpreting the Results
+
+The plot illustrates a core tension in this experiment. In the **low-spread** scenario ($\sigma = 0.5$), 80% power is achievable with roughly 200--250 total participants. However, this scenario assumes an implausibly homogeneous user base.
+
+In the **medium-spread** scenario ($\sigma = 1.0$), which we consider the most realistic, 80% power requires approximately 400 total participants. At our realistic recruitment ceiling of $N = 150$ (75 per group), we expect roughly **20--25% power** — meaning the study will very likely fail to reject the null even if the true effect exists.
+
+In the **high-spread** scenario ($\sigma = 2.0$), power at $N = 150$ is near the 5% floor, and 80% power would require over 1,500 participants.
+
+We note, however, that this recruitment pool may already have above-average AI safety awareness, which could mean true power for this specific sample is higher than these estimates suggest.
+
+## Key Takeaways
+
+These findings reflect that the study will be **underpowered** at achievable sample sizes under realistic assumptions. A non-significant result at $N=150$ would be consistent with both a true null and a real effect we lacked power to detect; we could not distinguish between the two.
+
+# References
+
+- Hu, Y. et al. (2025). Assessing nudge impact: A comprehensive second-order meta-analysis. *Journal of Behavioral Decision Making*. <https://doi.org/10.1002/bdm.70053>
+
+- Mertens, S., Herberz, M., Hahnel, U. J. J., & Brosch, T. (2022). The effectiveness of nudging: A meta-analysis of choice architecture interventions across behavioral domains. *PNAS*, 119(1), e2107346118. <https://doi.org/10.1073/pnas.2107346118>
+
+------------------------------------------------------------------------
