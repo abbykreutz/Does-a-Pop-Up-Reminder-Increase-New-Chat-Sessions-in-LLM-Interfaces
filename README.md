@@ -6,7 +6,7 @@ Abigail Kreutz ([abby.f.kreutz@gmail.com](mailto:abby.f.kreutz@gmail.com)) | Jan
 
 ## Overview
 
-Recent work suggests that safety- and performance-relevant behavior in large language models can worsen as a conversation accumulates turns. Starting a new chat resets that context, but restarting is easy to overlook mid-task. This project ran a between-subjects randomized controlled trial through a Chrome extension we built that instruments five LLM web interfaces (ChatGPT, Claude, Gemini, DeepSeek, and Grok). Treatment participants saw a neutral reminder to "create new chats often"; control participants saw the same platform disclaimer without that line.
+Recent work suggests that safety- and performance-relevant behavior in large language models can worsen as a conversation accumulates turns. Starting a new chat resets that context, but restarting is easy to overlook mid-task. This project ran a between-subjects randomized controlled experiment through a Chrome extension we built that instruments five LLM web interfaces (ChatGPT, Claude, Gemini, DeepSeek, and Grok). Treatment participants saw a neutral reminder to "create new chats often"; control participants saw the same platform disclaimer without that line.
 
 Our research question: **does a neutral reminder shown when a user loads an instrumented LLM platform increase new-chat creation without reducing overall active time on the platform?**
 
