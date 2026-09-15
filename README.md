@@ -2,7 +2,7 @@
 
 DATA 241: Experiments and Causal Inference | Summer 2026 | Final Project
 
-Abigail Kreutz ([abby.f.kreutz@gmail.com](mailto:abby.f.kreutz@gmail.com)) | Jana Quan | Killian Carter | Luan Ye
+Abigail Kreutz (abigailkreutz@berkeley.edu) | Jana Quan | Killian Carter | Luan Ye
 
 ## Overview
 
