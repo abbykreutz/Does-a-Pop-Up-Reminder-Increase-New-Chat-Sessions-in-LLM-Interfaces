@@ -6,11 +6,11 @@ Abigail Kreutz (abigailkreutz@berkeley.edu) | Jana Quan | Killian Carter | Luan 
 
 ## Overview
 
-Recent work suggests that safety- and performance-relevant behavior in large language models can worsen as a conversation accumulates turns. Starting a new chat resets that context, but restarting is easy to overlook mid-task. This project ran a between-subjects randomized controlled experiment through a Chrome extension we built that instruments five LLM web interfaces (ChatGPT, Claude, Gemini, DeepSeek, and Grok). Treatment participants saw a neutral reminder to "create new chats often"; control participants saw the same platform disclaimer without that line.
+Recent work suggests that safety- and performance-relevant behavior in large language models can worsen as a conversation window accumulates turns. Starting a new chat resets that context window, but how often people actually do so hasn't been studied. This project ran a between-subjects randomized controlled experiment through a Chrome extension we built that instruments five LLM web interfaces (ChatGPT, Claude, Gemini, DeepSeek, and Grok). Treatment participants saw a pop-up reminder to "create new chats often"; control participants saw the same platform disclaimer without that line.
 
-Our research question: **does a neutral reminder shown when a user loads an instrumented LLM platform increase new-chat creation without reducing overall active time on the platform?**
+Our research question: **does a pop-up reminder shown when a user loads an instrumented LLM platform increase new-chat creation without reducing overall active time on the platform?**
 
-We used a neutral message rather than a safety-framed warning so that any behavior change could be attributed to salience (the reminder simply makes restarting noticeable) rather than to persuasion or newly formed beliefs about AI safety.
+We used a neutral message rather than a safety-framed warning so that any behavior change could be attributed to salience (the reminder simply makes restarting noticeable) rather than to persuasion or newly formed beliefs about AI safety degredation.
 
 ## Experimental Design
 
@@ -40,7 +40,7 @@ My focus was participant-level data quality and the pre-registration/power side 
 ## Repository Structure
 
 `final_report.pdf`
-The final report as submitted — design, instrumentation, results, and discussion in full.
+The final report as submitted, including design, instrumentation, results, and discussion in full.
 
 `Final_Report.ipynb`
 The analysis notebook (R via Google Colab) underlying the final report: data construction, randomization checks, the primary and alternative treatment-effect models, randomization inference, the CONSORT diagram, and the realized power calculation.
@@ -53,8 +53,8 @@ My pre-launch power analyses: a simulation-based R version (cited in the final r
 
 ## Key Takeaways
 
-A neutral, salience-based reminder moved new-chat creation in the expected direction, but with only 12 analyzed participants the design had roughly 6-7% power to detect a plausible effect — a null result here is evidence the study couldn't decide the question, not evidence the reminder doesn't work. Differential attrition (participants who disliked the reminder could only escape it by uninstalling; control participants had no analogous exit) also meant the secondary outcome, active time, reflected who stayed in each arm more than what the reminder did to any individual's usage. The most durable output of the project is the instrumentation and analysis pipeline itself: a Chrome extension that cleanly randomizes and logs behavior across five LLM platforms, and an analysis plan — randomization inference, CONSORT accounting, sensitivity checks removing the post-assignment exclusion rule — ready to rerun at the sample size (roughly 560 participants) that this design would actually need.
+The pop-up reminder moved new-chat creation in the direction we expected, but with only 12 people in the analysis sample (4 control, 8 treatment), we only had ~6–7% power to detect a real effect. At that power, the null result reflects that underpowering. A non-significant result doesn't mean the reminder had no effect; it means we didn't have enough participants to reliably tell a real effect from noise, so we can't establish the causal direction one way or the other. Differential attrition also played a role: attrition was 75% in control vs. 56% in treatment, and we don't have data on why individual participants stopped participating (whether they uninstalled the extension, simply stopped using the platforms, or something else). That asymmetry means the secondary outcome, active time, reflected who stayed in each arm more than what the reminder did to any individual's usage. What we came out of this class with is a working pipeline we continue to iterate on: the extension continues to randomize and log behavior across five LLM platforms, and our R analysis is built and tested. The next step is running our experiment at scale – roughly 560 participants — which is what we're pursuing next.
 
 ## Note on the browser extension
 
-The Chrome extension that ran this experiment (client-side randomization, Firebase logging, and the on/off toggle used to lock data collection) lives in a companion private repository and isn't included here.
+The Chrome extension that ran this experiment is available on the Chrome Web Store; its source lives in a companion private repository and isn't included here.
